@@ -1,6 +1,6 @@
-<p align="center">
-  <img src="./doc/logo.png" alt="drawing" width="500"/>
-</p>
+!<p align="center">
+!  <img src="./doc/logo.png" alt="drawing" width="500"/>
+!</p>
 
 # JC++
 
