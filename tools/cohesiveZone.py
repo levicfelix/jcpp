@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.optimize import curve_fit
+from scipy.integrate import quad
 
 # Input
 infile = '../../crack/md/graphene/airebo/cohesion-zone/j_integral_dry/crack_tip_3010000.csv'
@@ -105,16 +106,25 @@ elif plot_which==2:
     u=u-u[0]
     ty=ty-ty[-1]
     
+    # Perform curve fitting for the traction-separation law
     param, param_cov = curve_fit(Needleman, u[ifit:-1], ty[ifit:-1])
+    # Calculate work of separation 
+    # (integration from separation at maximum stress to ~inf )
+    Ws, _ = quad(Needleman, 0.5, 8.0, args=(param[0], param[1]))
+    Ws = Ws*1e-1 # GPa.Å to J/m²
+
     print("Fitting parameters:")
     print("σ_max = %.1f GPa" % param[0])
     print("δ_m = %.1f Å" % param[1])
+    print("Work of separation = %.1f J/m²" % Ws)
+    
     
     x = np.linspace(0, 8, 1000)
-    plt.plot(x,Needleman(x, param[0], param[1]),'r-',label='Needleman fit')    
+    plt.plot(x,Needleman(x, param[0], param[1]),'r-',label="Needleman's model")
     plt.plot(u,ty, 'bs-',label='MD atomistic')
     plt.xlabel(r'$\delta$ ($\AA$)')
     plt.ylabel(r'$T_{y}$ (GPa)')
     #plt.xlim(1.3,5)
     plt.legend()
     plt.show()
+
