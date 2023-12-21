@@ -1,0 +1,156 @@
+%% Overleaf			
+%% Software Manual and Technical Document Template	
+%% 									
+%% This provides an example of a software manual created in Overleaf.
+
+\documentclass{ol-softwaremanual}
+
+% Packages used in this example
+\usepackage{graphicx}  % for including images
+\usepackage{microtype} % for typographical enhancements
+\usepackage{minted}    % for code listings
+\usepackage{amsmath}   % for equations and mathematics
+\setminted{style=friendly,fontsize=\small}
+\renewcommand{\listoflistingscaption}{List of Code Listings}
+\usepackage{hyperref}  % for hyperlinks
+\usepackage[a4paper,top=4.2cm,bottom=4.2cm,left=3.5cm,right=3.5cm]{geometry} % for setting page size and margins
+\usepackage{titlesec}
+
+% Custom macros used in this example document
+\newcommand{\doclink}[2]{\href{#1}{#2}\footnote{\url{#1}}}
+\newcommand{\cs}[1]{\texttt{\textbackslash #1}}
+
+\titleformat{\subsubsection}{\normalfont\fontfamily{phv}\fontsize{14}{17}\selectfont}{\thesubsubsection}{1em}{}
+
+
+% Frontmatter data; appears on title page
+\title{User Manual}
+\version{11Dec2023}
+\author{Levi Felix}
+\softwarelogo{\includegraphics[width=13cm]{logo.png}}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+%\listoflistings
+\newpage
+
+\section{Introduction}
+
+This document is a manual to the JC++ code to compute a fully lattice-based $J$-integral from atomistic simulations.
+
+\section{Installation}
+The installation is as simple as compiling a \verb|C++| code on a Linux terminal. From the parent directory (\verb|jcpp|), do the following steps:
+\begin{verbatim}
+cd src
+./install.sh
+\end{verbatim}
+An executable file called \verb|jc++| should be created in the \verb|src| directory. You also have the option to export the folder to the \verb|PATH| environment variable.
+
+\section{Input file description}
+In this section, a detailed description of the input file parameters is given. $J$ is calculated done by a \verb|.jparams| control file that specifies the parameters of the calculation, such as \verb|LAMMPS| trajectory files, loop sizes, timesteps used in the calculation, etc.
+
+\subsubsection*{SystemLabel [string]} 
+It is used as a prefix to name the result's folder.
+
+\subsubsection*{Dimensions [integer]}
+System dimensionality (e.g. 2 or 3). Necessary when dealing with 2D systems. The computation of the deformation gradient tensor $F$ needs that all atoms should have a coordination number greater or equal to \verb|Dimensions| to avoid singular matrix problems \cite{Zimmerman_2009}.
+
+\subsubsection*{PBC [boolean]}
+Periodic boundary conditions out-of-plane?
+
+\subsubsection*{NumTypes [integer]}
+Number of atom types in the simulation.
+
+\subsubsection*{BulkCoordination [integer array]}
+The coordination number of each atom type in the bulk region. This is used to search for the crack tip position, where atoms nearby have lower atomic coordination.
+
+\subsubsection*{NeighborCutoff [float array]}
+Pairwise cutoff radii to determine atom neighbors. If more atom types are present, provide cutoff radii for each interaction. For example, if a simulation has 2 types, provide $2\times2=4$ numbers separated by spaces. Each element will be part of a square matrix of \verb|NumTypes|$^2$ in the following order: $r_{11}$ $r_{12}$ $r_{21}$ $r_{22}$. This is very system-dependent. Coordination Analysis tool from OVITO may help to get suitable values.
+
+\subsubsection*{NeighborScaling [float array]}
+Scaling factor for cutoff radii for the calculation of F. The need for these are to avoid singular matrices due to atoms with coordination number less than the system's dimensionality. It is a multiplicative factor for the respective cutoff radius. It has the same format as the \verb|NeighborCutoff| keyword.
+
+\subsubsection*{NeighborSkin [float]}
+Avoids having to loop over all atoms in the simulation to get neighbor lists.
+
+\subsubsection*{Thickness [float]}
+Out-of-plane length of simulation box for 3D problems with PBC. Chunk (3D) or membrane (2D) thickness otherwise.
+
+\subsubsection*{UnitsLAMMPS [string]}
+Units used in the \verb|LAMMPS| simulation to convert all units to yield $J$ in J/m$^2$.
+
+\subsubsection*{CrackTrajFile [string]}
+Path to simulation trajectory file of the crack propagation simulation.
+
+\subsubsection*{BulkTrajFile [string]}
+Path to simulation trajectory file of the simulation containing the atomic potential energy and stresses reference values from the bulk configuration. If the crack faces have their interactions excluded and the loading simulation starts from a completely "closed" crack, then the same trajectory file can be used.
+
+\subsubsection*{SurfaceTrajFile [string]}
+Path to simulation trajectory file of the simulation containing the atomic potential energy and stresses reference values from the surface configuration. If the crack faces have their interactions excluded and the loading simulation starts from a completely "closed" crack, then the same trajectory file can be used.
+
+\subsubsection*{CSVrestart [boolean]}
+Weather generates new data from \verb|LAMMPS| or restarted from pre-existing CSV files. If no previous CSV files are present, set to \verb|False|. 
+
+\subsubsection*{StepMin [integer]}
+Minimum timestep to compute $J$. Only used if \verb|CrackStep=-1|.
+
+\subsubsection*{StepMax [integer]}
+Maximum timestep to compute $J$. Only used if \verb|CrackStep=-1|.
+
+\subsubsection*{CrackStep [integer]}
+Timestep at which $J$ should be computed. If -1, compute all timesteps between \verb|StepMin| and \verb|StepMax|
+
+\subsubsection*{BulkStep [integer]}
+Timestep at which the reference "bulk" structure is taken from the trajectory of a bulk perfect structure used to get energy and stress reference values for the atoms in the system \cite{Nakatani_2000}.
+
+\subsubsection*{SurfaceStep [integer]}
+The same but corresponding to atoms "behind" the crack tip, where reference values should be taken from a surface configuration \cite{Nakatani_2000}.
+
+\subsubsection*{ContourShape [string]}
+Shape of loop used in the $J$-integral calculation. Currently, only \verb|circular| and \verb|rectangular| are implemented.
+
+\subsubsection*{ContourParams [float array]}
+Parameters giving the size of the loop. If \verb|ContourShape=rectangular|, then the values given are $L_x$ and $L_y$, which are the size of the edges of the rectangle along $x$ and $y$ axis, respectively. If \verb|ContourShape=circular|, then the values given correspond to $R_{in}$ and $R_{out}$, which are the inner and outer radius of the closed circular annulus, respectively.
+
+\subsubsection*{DomainCSV [boolean]}
+Enable saving CSV files for the integration domains. It can be used to plot calculated quantities by the code. Default: \verb|False|.
+
+\subsubsection*{FindCrackTip [boolean]}
+Enable automatic crack tip search. 
+
+\subsubsection*{TipSearchMethod [string]}
+Currently, two methods are implemented. The first one is \verb|Coordination|, where atoms with a coordination number less than the bulk values (e.g., in a honeycomb lattice, atoms have a coordination number of 3 in the bulk and 2 or 1 at the edges) are filtered and those with maximum $x$ coordinate values (closer to the tip) will identify the crack tip, where its coordinates are given by the average of these atoms. Note that this option may give wrong values if there is any structural defect within \verb|CrackRegion|. The other one is \verb|vonMises|, which looks for the atoms with
+the largest von Mises stress and get crack tip position from their positions.
+
+\subsubsection*{TipSearchStyle [string]}
+If \verb|TipSearchMethod=Coordination|, then two styles are currently available. The style \verb|center|, which explicitly specifies the medium $y$ ($y_m$) and its thickness $\Delta y$ of the crack region (defined in the next keyword). The style \verb|center|, then the range $x_{lo}$ and $x_{hi}$ are specified, where $lo$ $hi$ refers to lower (higher) bounds of the rectangle.
+\noindent If \verb|TipSearchMethod=vonMises|, then two styles are currently available. The style \verb|one| is given, then the crack tip position is given the ($x$,$y$) position of the atom with the largest von Mises stress. If the style is \verb|two|, then the midpoint of the two atoms with the largest von Mises stress will be used as the crack tip position.
+
+\subsubsection*{CrackRegion [float array]}
+Rectangular region where the crack tip should be in. When \verb|FindCrackTip=False| this options is ignored. For \verb|TipSearchStyle=center|, the format is $x_{lo}$ $x_{hi}$ $y_{m}$ $\Delta y$. For all other cases, we have $x_{lo}$ $x_{hi}$ $y_{lo}$ $y_{hi}$. All values are given in \AA
+
+\subsubsection*{CrackTipPos [float array]}
+Manually-defined coordinates of the crack tip position ($x$,$y$) are given in \AA.
+
+\section{Running examples}
+The \verb|examples| folder contains tests involving the main features of the code, to test if the compilation was done successfully.
+
+\subsection{Crack propagation in monolayer graphene}
+A crack propagation simulation in graphene is located in the \verb|/examples/graphene/| folder. A precalculated test is located therein. To run it just open a terminal in that folder and type:
+\begin{verbatim}
+./run.sh
+\end{verbatim}
+A new folder named \verb|j_integral_graphene| will be created, which contains CSV files for each timestep of the simulations, alongside the $J$-integral calculated for each one of them in files with the \verb|j_integral_*.txt| pattern.
+
+\section{Plotting tools}
+In the \verb|/jcpp/tools/| folder, there are some Python scripts used to plot results and convert CSV to \verb|LAMMPS| dump files in order to visualize quantities computed by the code, such as the deformation gradient tensor $F$ and the atomic coordination, for a specific domain inside a loop used to compute $J$. 
+
+\noindent NOTE: The \verb|pandas| library is required to use these scripts!
+
+\bibliography{references}
+\bibliographystyle{unsrt}
+
+\end{document}
