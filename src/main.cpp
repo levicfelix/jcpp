@@ -127,10 +127,12 @@ int main(int argc, char* argv[]) {
     // Write header of file
     jfile << "# Step     Jenergy     Jstress     Jtotal     CrackTipX     CrackTipY\n";
     // Print header of screen
-    std::cout << "  Step   Tipx [Å]   Tipy [Å]   Jenergy [J/m²]   Jstress [J/m²]   Jtotal [J/m²]" << std::endl;
+    std::cout << "  Step   Tipx [Å]   Tipy [Å]   Jenergy [J/m²]   Jstress [J/m²]   Jdomain [J/m²]   Jupper [J/m²]   Jlower [J/m²]   Jcz [J/m²]   Jotal [J/m²]" << std::endl;
     //std::cout << params.neighborscaling[0][0] << std::endl;
     
     // -------------------- Loop over each timestep --------------------//
+    int Jczonce = 0;
+    std::vector<double> Jcz;
     std::string line;
     while (std::getline(jstepsFile, line)) {
         int jstep;
@@ -220,16 +222,23 @@ int main(int argc, char* argv[]) {
             shiftEnergy(curDomain,bulkMap,surfMap,crackTipPosition[0]);
             //shiftStress(curDomain,bulkMap,bulkMap,crackTipPosition[0]);
 
-            // Compute J-integral
-            std::vector<double> J = computeJintegral(curDomain,params.thickness, params.unitslammps);
+            // J-integral over the surface domain
+            std::vector<double> J = computeJdomain(curDomain,params.thickness, params.unitslammps);
+
+            // J-integral along the cohesion zone (compute only once because it is a material property) See why it goes to zero after some timestep for graphene
+            if (Jczonce==0) {
+                Jcz =  computeJcracksurf(curDomain, params.czdelta, crackTipPosition[1], params.atomvol, params.unitslammps);
+            }
+            Jczonce = 1;
 
             // Output to screen
-            printScreenColumns(jstep, crackTipPosition, J);
+            printScreenColumns(jstep, crackTipPosition, J, Jcz);
 
             // Write to the file
-            jfile << "  " << std::fixed << std::setprecision(4) << jstep << "        " << J[0] 
-            << "           " << J[1] << "             " << J[2] << "          " 
-            << crackTipPosition[0] << "             " << crackTipPosition[1] << "\n";
+            jfile << "  " << std::fixed << std::setprecision(4) << jstep << "        " << crackTipPosition[0] 
+            << "           " <<  crackTipPosition[1]  << "             " << J[0] << "          " 
+            << J[1] << "             " << J[2] << "             " << Jcz[0] << "             " << Jcz[1] 
+            << "             " << Jcz[2] << "             " << J[2]-Jcz[2] << "\n";
             
             std::cout.flush();
             

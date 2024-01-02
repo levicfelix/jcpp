@@ -31,6 +31,8 @@ struct Params {
     std::string tipstyle = "center";
     bool domaincsv = false;
     bool crackcsv = false;
+    double czdelta = 1.0;
+    double atomvol = 1.0;
 };
 
 // Function to read parameters from an external file
@@ -154,5 +156,11 @@ void readParams(const std::string& filename, Params& params) {
     }
     if (!paramStrings["DomainCSV"].empty()) {
         params.domaincsv = (paramStrings["DomainCSV"] == "True");
+    }
+    if (!paramStrings["CZoneSpacing"].empty()) {
+        params.czdelta = std::stof(paramStrings["CZoneSpacing"]);
+    }
+    if (!paramStrings["AtomVolume"].empty()) {
+        params.atomvol = std::stof(paramStrings["AtomVolume"]);
     }
 }

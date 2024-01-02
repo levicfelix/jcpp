@@ -195,8 +195,8 @@ void qFunction(const std::string& contourShape,
     }
 }
 
-// Compute J-integral
-std::vector<double> computeJintegral(std::unordered_map<int, Atom>& atomsDomain, 
+// Compute J-integral within domain area
+std::vector<double> computeJdomain(std::unordered_map<int, Atom>& atomsDomain, 
                 double tz, std::string units) {
 
     // Get LAMMPS units        
@@ -249,4 +249,43 @@ std::vector<double> computeJintegral(std::unordered_map<int, Atom>& atomsDomain,
         }
     }
     return {JW, JT, J};
+}
+
+// Compute J-integral along crack surface
+std::vector<double> computeJcracksurf(std::unordered_map<int, Atom>& atomsDomain, 
+                double dx, double y0, double Vat, std::string units) {
+
+    // Get LAMMPS units        
+    std::vector<double> lmpunits = lammps::Units(units);
+    double distanceUnits = lmpunits[0]; double stressUnits = lmpunits[2];
+
+    dx = dx*distanceUnits;
+    Vat = Vat*distanceUnits*distanceUnits*distanceUnits;
+    double Jz = 0.0; double Jupper = 0.0; double Jlower = 0.0;
+    for (auto& entry : atomsDomain) {
+        int atomId = entry.first;
+        Atom& atom = entry.second;
+        
+        if (atom.coordination>0 && atom.coordination<atom.bulk_coordination) {
+
+            double duyx = atom.Fyx; // Displacement gradient component of atom
+            double Syy = atom.syy*stressUnits; // Atomic stress tensor component
+            
+            //std::cout << atom.y << std::endl;
+
+            if (atom.y>y0) { // Upper crack surface
+                Jupper += Syy * duyx * atom.q * dx / Vat;
+                //std::cout << Syy << std::endl;
+                //std::cout << duyx << std::endl;
+                //std::cout << atom.q << std::endl;
+                //std::cout << Jupper << std::endl;
+            }
+            else if (atom.y<y0) { // Lower crack surface
+                Jlower += Syy * duyx * atom.q * dx / Vat;
+            }
+        
+            Jz += Jupper - Jlower;
+        }
+    }
+    return {Jupper, Jlower, Jz};
 }
