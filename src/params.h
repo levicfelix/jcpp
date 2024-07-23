@@ -33,6 +33,7 @@ struct Params {
     bool crackcsv = false;
     double czdelta = 1.0;
     double atomvol = 1.0;
+    int maxid = -1;
 };
 
 // Function to read parameters from an external file
@@ -162,5 +163,8 @@ void readParams(const std::string& filename, Params& params) {
     }
     if (!paramStrings["AtomVolume"].empty()) {
         params.atomvol = std::stof(paramStrings["AtomVolume"]);
+    }
+        if (!paramStrings["MaxID"].empty()) {
+        params.maxid = std::stoi(paramStrings["MaxID"]);
     }
 }

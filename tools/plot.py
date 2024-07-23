@@ -24,17 +24,28 @@ def plot_J(sys_label,outdir,q1,q2,shape,prefix,K0,dt,dKIt):
     return
 
 
-loop = 40.0
-pltlabel = 'graphene-airebo-ei'
+#loop = 40.0
+#pltlabel = 'graphene-airebo-ei'
 
-plot_J('dry','../examples/graphene-airebo/excluded-interactions', loop, loop, 
-       'rectangular','dry',0.0,0.001,0.05)
+#plot_J('dry','/home/levi/Research/stress-corrosion/crack/md/graphene/airebo/cohesion-zone', 10, 20, 
+#       'circular','dry',0.0,0.001,0.05)
 
-plot_J('passivated','../examples/graphene-airebo/excluded-interactions', loop, loop,
-       'rectangular','passivated',0.0,0.001,0.05)
+#plot_J('passivated','../examples/graphene-airebo/excluded-interactions', loop, loop,
+#       'rectangular','passivated',0.0,0.001,0.05)
 
-plt.xlim(0.0,3.0)
-plt.ylim(0.0,9.0)
+td, Jd = np.genfromtxt("/home/levi/Research/stress-corrosion/crack/md/graphene/airebo/cohesion-zone/j_integral_dry/j_integral_R1_10.0_R2_20.0.txt", 
+                       usecols=(0,5), unpack=True)
 
-plt.savefig(f'JKI_{pltlabel}.png',dpi=900)
+tp, Jp = np.genfromtxt("/home/levi/Research/stress-corrosion/crack/md/graphene/airebo/cohesion-zone/j_integral_passivated/j_integral_R1_10.0_R2_20.0.txt", 
+                       usecols=(0,5), unpack=True)
+print(td)
+
+plt.plot(td,Jd)
+plt.plot(tp,Jp)
+
+
+plt.xlim(0e6,4e6)
+#plt.ylim(0.0,9.0)
+
+#plt.savefig(f'JKI_{pltlabel}.png',dpi=900)
 plt.show()

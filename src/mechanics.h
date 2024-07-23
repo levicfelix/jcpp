@@ -55,7 +55,7 @@ void coordinationAnalysis(std::unordered_map<int, Atom>& atomsDomain,
                                const std::vector<int>& Nbulk,
                                std::vector<std::vector<double>> neighCutoff,
                                std::vector<std::vector<double>> neighScaling,
-                               double lz, bool pbc) {
+                               double lz, bool pbc, int maxid) {
     //std::cout << neighCutoff[0][0] << std::endl;
     // Loop over atoms in atomsDomain
     for (auto& entryAtomsDomain : atomsDomain) {
@@ -77,7 +77,7 @@ void coordinationAnalysis(std::unordered_map<int, Atom>& atomsDomain,
             // Check if the neighbor distance is within the cutoff
             int type2 = auxAtom.type;
             if (neighborDistance(atom, auxAtom, pbc, lz) < neighScaling[type1-1][type2-1]*neighCutoff[type1-1][type2-1]
-            && atom.id != auxAtom.id) {
+            && atom.id != auxAtom.id && auxAtom.id<=maxid) {
                 coordinationCount++;
                 neighIds.push_back(auxAtom.id);
             }
@@ -95,7 +95,7 @@ void coordinationAnalysis(std::unordered_map<int, Atom>& atomsDomain,
 namespace deformationGradient {
     void minSquarError(const AtomMap& allAtoms, const AtomMap& bulkAtoms,
                         const AtomMap& surfAtoms, AtomMap& domainAtoms, 
-                        double x0, double lz, bool pbc, bool checkfdim, double geomtol, int dimF){
+                        double x0, double lz, bool pbc, bool checkfdim, double geomtol, int dimF, int maxid){
         AtomMap refAtoms;
         // Loop over atoms in the contour domain
         for (auto& entry : domainAtoms) {
@@ -103,7 +103,7 @@ namespace deformationGradient {
             Atom& atom1 = entry.second;
             std::vector<double> at1 = {atom1.x, atom1.y, atom1.z};
             
-            if (atom1.coordination>0) { // Do not compute F for atoms with no neighbors
+            if (atom1.coordination>0 and atom1.id<=maxid) { // Do not compute F for atoms with no neighbors
             // Choose reference configuration (bulk or surface) based on x position relative 
             // to the crack tip
             std::string refloc;
@@ -116,7 +116,7 @@ namespace deformationGradient {
             }
 
             // Read data of atom in the reference configuration and attribute to vectors
-            Atom atom10 = findAtomById(refAtoms,atomId);
+            Atom atom10 = findAtomById(refAtoms,atomId,"deformationGradient (central atom)");
             std::vector<double> at10 = {atom10.x, atom10.y, atom10.z};
 
             // Get neighbor list of ids
@@ -146,7 +146,7 @@ namespace deformationGradient {
                     }
                 }
             }
-            
+            //std::cout << atom1.id << " " << dimF << std::endl;
             // Get matrix transformation for atomic coordinates
             if (dimF==1) {
                 T = transformMatrixLine(atom1.id,atomNeighs,refAtoms);
@@ -179,8 +179,8 @@ namespace deformationGradient {
 
             // Iterate over neighbors of this atom
             for (const auto& neighborId : atomNeighs) {
-                Atom atom2 = findAtomById(allAtoms,neighborId);
-                Atom atom20 = findAtomById(refAtoms,neighborId);
+                Atom atom2 = findAtomById(allAtoms,neighborId,"deformationGradient (neighbor current)");
+                Atom atom20 = findAtomById(refAtoms,neighborId,"deformationGradient (neighbor reference)");
                 std::vector<double> at2 = {atom2.x, atom2.y, atom2.z};
                 std::vector<double> at20 = {atom20.x, atom20.y, atom20.z};
             
@@ -245,7 +245,7 @@ namespace deformationGradient {
 
     void finiteDifference(const AtomMap& allAtoms, const AtomMap& bulkAtoms,
                             const AtomMap& surfAtoms, AtomMap& domainAtoms, 
-                            double x0, double lz, bool pbc){
+                            double x0, double lz, bool pbc, int maxid){
         AtomMap refAtoms;
         // Loop over atoms in the contour domain
         for (auto& entry : domainAtoms) {
@@ -262,7 +262,7 @@ namespace deformationGradient {
                 refloc="Surface";
                 refAtoms = surfAtoms;
             }
-            Atom atom10 = findAtomById(refAtoms,atomId);
+            Atom atom10 = findAtomById(refAtoms,atomId,"deformationGradient (central atom reference)");
             
             std::vector<double> at1 = {atom1.x, atom1.y, atom1.z};
             std::vector<double> at10 = {atom10.x, atom10.y, atom10.z};
@@ -277,14 +277,14 @@ namespace deformationGradient {
 
             // Get neighbor list of ids
             std::vector<int> atomNeighs = stringToVectorInt(atom1.neighbor_list);
-        
+            
             // Define matrix that stores the deformation gradient tensor per atom
             std::vector<std::vector<double>> F = zeroesMatrix;
-        
+
             // Iterate over neighbors of this atom
             for (const auto& neighborId : atomNeighs) {
-                Atom atom2 = findAtomById(allAtoms,neighborId);
-                Atom atom20 = findAtomById(refAtoms,neighborId);
+                Atom atom2 = findAtomById(allAtoms,neighborId,"deformationGradient (neighbor current)");
+                Atom atom20 = findAtomById(refAtoms,neighborId,"deformationGradient (neighbor reference)");
                 std::vector<double> at2 = {atom2.x, atom2.y, atom2.z};
                 std::vector<double> at20 = {atom20.x, atom20.y, atom20.z};
             

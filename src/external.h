@@ -136,6 +136,10 @@ namespace lammps {
                 else if (instep == -1 && currentTimestep >= stpmax) {
                     break;
                 }
+                //else { 
+                //    std::cerr << " ERROR: Could not find timestep " << instep << " in file " << lmptrj << std::endl;
+                //    std::exit(EXIT_FAILURE);
+                //}
 
                 // Clear the atomData vector for the next timestep
                 atomData.clear();

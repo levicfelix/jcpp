@@ -91,16 +91,16 @@ void filterMapByIds(const AtomMap& completeMap, const AtomMap& inputMap, AtomMap
 }
 
 // Function to find an Atom in AtomMap by id
-Atom findAtomById(const AtomMap& atomMap, int id) {
+Atom findAtomById(const AtomMap& atomMap, int id, std::string funcname) {
     auto it = atomMap.find(id);
     if (it != atomMap.end()) {
         return it->second;  // Return the Atom if found
     } else {
         // Handle the case when the id is not found
-        std::cerr << "ERROR: Atom with id " << id << " not found in function findAtomById" << std::endl;
+        std::cerr << "ERROR: Atom with id " << id << " not found in function " << funcname << std::endl;
         std::exit(EXIT_FAILURE);
         // You might want to return a default Atom or throw an exception, depending on your needs
-        return Atom();  // Return a default-constructed Atom
+        //return Atom();  // Return a default-constructed Atom
     }
 }
 
@@ -148,12 +148,12 @@ void shiftEnergy(AtomMap& targetMap, const AtomMap& bMap, const AtomMap& sMap, d
     }
 }
 
-void shiftStress(AtomMap& targetMap, const AtomMap& bMap, const AtomMap& sMap, double x0) {
+void shiftStress(AtomMap& targetMap, const AtomMap& bMap, const AtomMap& sMap, double x0, int maxid) {
     for (auto& entry : targetMap) {
         int targetId = entry.first;
         Atom& targetAtom = entry.second;
 
-        if (targetAtom.x>x0){
+        if (targetAtom.x>x0 && targetAtom.id<=maxid){
 
             // Shift stress tensor relative to bulk only            
             auto it = bMap.find(targetId);
@@ -166,7 +166,7 @@ void shiftStress(AtomMap& targetMap, const AtomMap& bMap, const AtomMap& sMap, d
                 targetAtom.syz -= it->second.syz;
             } 
         } 
-        else {
+        else if (targetAtom.x<x0 && targetAtom.id<=maxid) {
             auto it = sMap.find(targetId);
             if (it != sMap.end()) {
                 targetAtom.sxx -= it->second.sxx;
@@ -186,7 +186,7 @@ void shiftStress(AtomMap& targetMap, const AtomMap& bMap, const AtomMap& sMap, d
 
 // Function to check if three points are collinear
 bool atomsAreCollinear(int atomid, std::vector<int> Neighlist, const AtomMap& atomMap, double tol) {
-    const Atom& atom = findAtomById(atomMap,atomid);
+    const Atom& atom = findAtomById(atomMap,atomid,"atomsAreCollinear (central atom)");
     size_t numPoints = Neighlist.size()+1;
 
     // Check if the number of points is at least 3
@@ -195,8 +195,8 @@ bool atomsAreCollinear(int atomid, std::vector<int> Neighlist, const AtomMap& at
         std::exit(EXIT_FAILURE);
     }
     
-    Atom neighbor1 = findAtomById(atomMap,Neighlist[0]);
-    Atom neighbor2 = findAtomById(atomMap,Neighlist[1]);
+    Atom neighbor1 = findAtomById(atomMap,Neighlist[0],"atomsAreCollinear (neighbor 1)");
+    Atom neighbor2 = findAtomById(atomMap,Neighlist[1],"atomsAreCollinear (neighbor 2)");
 
     // Check if vectors (p2 - p1) and (p3 - p1) are parallel
     std::vector<double> crossProduct = cross({neighbor1.x-atom.x, neighbor1.y-atom.y, neighbor1.z-atom.z},
@@ -211,7 +211,7 @@ bool atomsAreCollinear(int atomid, std::vector<int> Neighlist, const AtomMap& at
 }
 
 bool atomsAreCoplanar(int atomid, std::vector<int> Neighlist, const AtomMap& atomMap, double tol) {
-    const Atom& atom = findAtomById(atomMap,atomid);
+    const Atom& atom = findAtomById(atomMap,atomid,"atomsAreCoplanar (central atom)");
     size_t numPoints = Neighlist.size()+1;
 
     // Check if the number of points is at least 3
@@ -227,7 +227,7 @@ bool atomsAreCoplanar(int atomid, std::vector<int> Neighlist, const AtomMap& ato
     xCoords[0]=atom.x; yCoords[0]=atom.y; zCoords[0]=atom.z;
 
     for (int in = 1; in < numPoints; ++in) {
-        Atom neighbor = findAtomById(atomMap,Neighlist[in-1]);
+        Atom neighbor = findAtomById(atomMap,Neighlist[in-1],"atomsAreCoplanar (neighbor)");
         xCoords[in] = neighbor.x;
         yCoords[in] = neighbor.y;
         zCoords[in] = neighbor.z;
@@ -262,9 +262,9 @@ std::vector<double> directionVector(const Atom& p1, const Atom& p2) {
 std::vector<std::vector<double>> transformMatrixLine(int atomid, std::vector<int> Neighlist, const AtomMap& atomMap) {
     
     // Get atom and its neighbors
-    const Atom& atom = findAtomById(atomMap,atomid);
-    Atom neighbor1 = findAtomById(atomMap,Neighlist[0]);
-    Atom neighbor2 = findAtomById(atomMap,Neighlist[1]);
+    const Atom& atom = findAtomById(atomMap,atomid,"transformMatrixLine (central atom)");
+    Atom neighbor1 = findAtomById(atomMap,Neighlist[0],"transformMatrixLine (neighbor 1)");
+    Atom neighbor2 = findAtomById(atomMap,Neighlist[1],"transformMatrixLine (neighbor 2)");
 
     // Find the direction vector of the line
     std::vector<double> lineDirection = directionVector(atom, neighbor1);
@@ -304,9 +304,9 @@ std::vector<double> planeNormalVector(const Atom& p1, const Atom& p2, const Atom
 std::vector<std::vector<double>> transformMatrixPlane(int atomid, std::vector<int> Neighlist, const AtomMap& atomMap) {
 
     // Get atom and two of its neighbors
-    const Atom& atom = findAtomById(atomMap,atomid);
-    Atom neighbor1 = findAtomById(atomMap,Neighlist[0]);
-    Atom neighbor2 = findAtomById(atomMap,Neighlist[1]);
+    const Atom& atom = findAtomById(atomMap,atomid,"transformMatrixPlane (central atom)");
+    Atom neighbor1 = findAtomById(atomMap,Neighlist[0],"transformMatrixPlane (neighbor 1)");
+    Atom neighbor2 = findAtomById(atomMap,Neighlist[1],"transformMatrixPlane (neighbor 2)");
 
     // Find the normal vector of the plane
     std::vector<double> zAxis = planeNormalVector(atom, neighbor1, neighbor2);

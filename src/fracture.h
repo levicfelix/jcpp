@@ -8,7 +8,7 @@ namespace findCrackTip {
         double neighSkin, int ntypes,
         std::vector<double> crackRegion,
         const std::vector<int>& Nbulk, const std::string& outdir,
-        int timestep, bool crackTipCSV, bool pbc, std::string searchstyle) {
+        int timestep, bool crackTipCSV, bool pbc, std::string searchstyle, int maxid) {
     
         //std::cout << "Finding crack tip position... " << std::endl;
         double xlo = crackRegion[0]; double xhi = crackRegion[1];
@@ -33,7 +33,7 @@ namespace findCrackTip {
 
         // All neighScaling numbers should be equal to 1 since it is of interest
         // only deviation of actual coordination from bulk to identify a surface!
-        coordinationAnalysis(atomsCrack, atomsAux, Nbulk, neighCutoff, onesMatrix, tz, pbc);
+        coordinationAnalysis(atomsCrack, atomsAux, Nbulk, neighCutoff, onesMatrix, tz, pbc, maxid);
 
         // Wheather to save csv for atoms near crack surfaces
         if (crackTipCSV) {
@@ -96,7 +96,7 @@ namespace findCrackTip {
         std::vector<double> crackRegion, const std::string& outdir,
         std::vector<std::vector<double>> neighCutoff, double neighSkin,
         const std::vector<int>& Nbulk, double tz, bool pbc,
-        int timestep, bool crackTipCSV, std::string searchstyle) {
+        int timestep, bool crackTipCSV, std::string searchstyle, int maxid) {
     
         //std::cout << "Finding crack tip position... " << std::endl;
         double xlo = crackRegion[0]; double xhi = crackRegion[1];
@@ -109,7 +109,7 @@ namespace findCrackTip {
         if (crackTipCSV) {
             std::unordered_map<int, Atom> atomsAux;
             atomsRectangularRegion(allAtoms, atomsAux, xlo-neighSkin, xhi+neighSkin, ylo-neighSkin, yhi+neighSkin, 0.0, 0.0);
-            coordinationAnalysis(atomsCrack, atomsAux, Nbulk, neighCutoff, onesMatrix, tz, pbc);
+            coordinationAnalysis(atomsCrack, atomsAux, Nbulk, neighCutoff, onesMatrix, tz, pbc, maxid);
             std::string filename = outdir+"crack_tip_"+std::to_string(timestep)+".csv"; 
             writeCSV(atomsCrack, filename);
         }
@@ -197,7 +197,7 @@ void qFunction(const std::string& contourShape,
 
 // Compute J-integral within domain area
 std::vector<double> computeJdomain(std::unordered_map<int, Atom>& atomsDomain, 
-                double tz, std::string units) {
+                double tz, std::string units, int maxid) {
 
     // Get LAMMPS units        
     std::vector<double> lmpunits = lammps::Units(units);
@@ -210,7 +210,7 @@ std::vector<double> computeJdomain(std::unordered_map<int, Atom>& atomsDomain,
         int atomId = entry.first;
         Atom& atom = entry.second;
         
-        if (atom.coordination>0) {
+        if (atom.coordination>0 and atom.id<=maxid) {
         // Strain energy contribution
         // q-function derivative
         std::vector<double> dq = {atom.dqx/distanceUnits, atom.dqy/distanceUnits, atom.dqz/distanceUnits};
@@ -242,50 +242,7 @@ std::vector<double> computeJdomain(std::unordered_map<int, Atom>& atomsDomain,
         }
         JW += Jstrain/tz; JT += Jtraction/tz;
         J += (Jstrain - Jtraction)/tz;
-        //double Jat = (Jstrain - Jtraction)/tz;;
-        //std::cout << Jtraction << std::endl;
-        //count += 1;
-        //if (count>10) {break;}
         }
     }
     return {JW, JT, J};
-}
-
-// Compute J-integral along crack surface
-std::vector<double> computeJcracksurf(std::unordered_map<int, Atom>& atomsDomain, 
-                double dx, double y0, double Vat, std::string units) {
-
-    // Get LAMMPS units        
-    std::vector<double> lmpunits = lammps::Units(units);
-    double distanceUnits = lmpunits[0]; double stressUnits = lmpunits[2];
-
-    dx = dx*distanceUnits;
-    Vat = Vat*distanceUnits*distanceUnits*distanceUnits;
-    double Jz = 0.0; double Jupper = 0.0; double Jlower = 0.0;
-    for (auto& entry : atomsDomain) {
-        int atomId = entry.first;
-        Atom& atom = entry.second;
-        
-        if (atom.coordination>0 && atom.coordination<atom.bulk_coordination) {
-
-            double duyx = atom.Fyx; // Displacement gradient component of atom
-            double Syy = atom.syy*stressUnits; // Atomic stress tensor component
-            
-            //std::cout << atom.y << std::endl;
-
-            if (atom.y>y0) { // Upper crack surface
-                Jupper += Syy * duyx * atom.q * dx / Vat;
-                //std::cout << Syy << std::endl;
-                //std::cout << duyx << std::endl;
-                //std::cout << atom.q << std::endl;
-                //std::cout << Jupper << std::endl;
-            }
-            else if (atom.y<y0) { // Lower crack surface
-                Jlower += Syy * duyx * atom.q * dx / Vat;
-            }
-        
-            Jz += Jupper - Jlower;
-        }
-    }
-    return {Jupper, Jlower, Jz};
 }

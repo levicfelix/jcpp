@@ -125,13 +125,20 @@ int main(int argc, char* argv[]) {
         return 1;  // Return an error code
     }
     // Write header of file
-    jfile << "# Step     Jenergy     Jstress     Jtotal     CrackTipX     CrackTipY\n";
+    jfile << "# Step     CrackTipX     CrackTipY     Jenergy     Jstress     Jtotal\n";
     // Print header of screen
-    std::cout << "  Step   Tipx [Å]   Tipy [Å]   Jenergy [J/m²]   Jstress [J/m²]   Jdomain [J/m²]   Jupper [J/m²]   Jlower [J/m²]   Jcz [J/m²]   Jotal [J/m²]" << std::endl;
+    std::cout << "  Step   Tipx [Å]   Tipy [Å]   Jenergy [J/m²]   Jstress [J/m²]   Jtotal [J/m²]" << std::endl; //   Jupper [J/m²]   Jlower [J/m²]   Jcz [J/m²]   Jotal [J/m²]" << std::endl;
     //std::cout << params.neighborscaling[0][0] << std::endl;
     
     // -------------------- Loop over each timestep --------------------//
-    int Jczonce = 0;
+    // Get maximum atom id to compute J (useful to exclude passivating species)
+    int maxid;
+    if (params.maxid == -1) {
+        maxid = bulkMap.size();
+    } else {
+        maxid = params.maxid;
+    }
+    
     std::vector<double> Jcz;
     std::string line;
     while (std::getline(jstepsFile, line)) {
@@ -172,12 +179,12 @@ int main(int argc, char* argv[]) {
                     crackTipPosition = findCrackTip::underCoordination(curMap, params.thickness, 
                     params.neighborcutoff, params.neighborskin, params.numtypes,
                     params.crackregion, params.bulkcoordination, outputdir, jstep, params.crackcsv, params.pbc,
-                    params.tipstyle);
+                    params.tipstyle, maxid);
                 }
                 else if (params.tipsearch=="vonMises"){
                     crackTipPosition = findCrackTip::vonMisesMax(curMap, params.crackregion, outputdir,
                     params.neighborcutoff, params.neighborskin, params.bulkcoordination, params.thickness,
-                    params.pbc, jstep, params.crackcsv, params.tipstyle);
+                    params.pbc, jstep, params.crackcsv, params.tipstyle, maxid);
                 }
                 else {
                     std::cerr << "ERROR: TipSearchMethod not recognized!" << std::endl;
@@ -199,17 +206,17 @@ int main(int argc, char* argv[]) {
             // Update atomic coordination
             coordinationAnalysis(curDomain, auxDomain, 
                                params.bulkcoordination, params.neighborcutoff, params.neighborscaling,
-                               params.thickness, params.pbc);
+                               params.thickness, params.pbc, maxid);
 
             // Compute deformation gradient tensor 
             //std::cout << "Computing deformation gradient tensor, Fij ..." << std::endl;
             if ( params.defgradmethod=="minsqerr" ) {
-                deformationGradient::minSquarError(curMap, bulkMap, surfMap, curDomain, crackTipPosition[0],
-                                    params.thickness, params.pbc, params.checkfdim, params.geomtolerance, params.defgraddimension);
+                deformationGradient::minSquarError(curMap, bulkMap, bulkMap, curDomain, crackTipPosition[0],
+                                    params.thickness, params.pbc, params.checkfdim, params.geomtolerance, params.defgraddimension, maxid);
             } 
             else if ( params.defgradmethod=="fdiff" ) {
-                deformationGradient::finiteDifference(curMap, bulkMap, surfMap, curDomain, crackTipPosition[0],
-                                    params.thickness, params.pbc);
+                deformationGradient::finiteDifference(curMap, bulkMap, bulkMap, curDomain, crackTipPosition[0],
+                                    params.thickness, params.pbc, maxid);
             }
             
             // Save CSV of domain info?                                
@@ -220,25 +227,18 @@ int main(int argc, char* argv[]) {
             
             // Shift energy and stress relative to their reference configurations
             shiftEnergy(curDomain,bulkMap,surfMap,crackTipPosition[0]);
-            //shiftStress(curDomain,bulkMap,bulkMap,crackTipPosition[0]);
+            //shiftStress(curDomain,bulkMap,bulkMap,crackTipPosition[0],maxid);
 
             // J-integral over the surface domain
-            std::vector<double> J = computeJdomain(curDomain,params.thickness, params.unitslammps);
-
-            // J-integral along the cohesion zone (compute only once because it is a material property) See why it goes to zero after some timestep for graphene
-            if (Jczonce==0) {
-                Jcz =  computeJcracksurf(curDomain, params.czdelta, crackTipPosition[1], params.atomvol, params.unitslammps);
-            }
-            Jczonce = 1;
+            std::vector<double> J = computeJdomain(curDomain,params.thickness, params.unitslammps,maxid);
 
             // Output to screen
-            printScreenColumns(jstep, crackTipPosition, J, Jcz);
+            printScreenColumns(jstep, crackTipPosition, J);
 
             // Write to the file
             jfile << "  " << std::fixed << std::setprecision(4) << jstep << "        " << crackTipPosition[0] 
             << "           " <<  crackTipPosition[1]  << "             " << J[0] << "          " 
-            << J[1] << "             " << J[2] << "             " << Jcz[0] << "             " << Jcz[1] 
-            << "             " << Jcz[2] << "             " << J[2]-Jcz[2] << "\n";
+            << J[1] << "             " << J[2] << "\n";
             
             std::cout.flush();
             

@@ -1,6 +1,6 @@
-<!--<p align="center"> -->
-<!--  <img src="./doc/logo.png" alt="drawing" width="500"/> -->
-<!--</p> -->
+<p align="center">
+  <img src="./doc/logo.png" alt="drawing" width="500"/>
+</p>
 
 # JC++
 
@@ -9,6 +9,6 @@
 ### Requirements
 
 1. C++ compiler
-2. Numpy (for plotting tools)
-2. Matplotlib (for plotting tools)
-2. Pandas (for plotting tools and convert CSV to LAMMPS dump files)
+2. Numpy (for plot results)
+2. Matplotlib (for plot results)
+2. Pandas (for plot results and convert CSV to LAMMPS dump files)

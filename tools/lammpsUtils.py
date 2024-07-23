@@ -4,7 +4,7 @@ import pandas as pd
 
 def csv2dump(infile,outfile):
     df = pd.read_csv(infile)
-    df = df.drop('neighbors', axis=1)
+    #df = df.drop('neighbors', axis=1)
     df['id'] = df['id'].astype(int).astype(str)
     df['type'] = df['type'].astype(int).astype(str)
     df['coordination'] = df['coordination'].astype(int).astype(str)

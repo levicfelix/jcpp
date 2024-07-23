@@ -52,18 +52,14 @@ where a control file (.jparams) should be in this folder.
 )";
 
 // Print in column format
-void printScreenColumns(int step, std::vector<double> ctpos, std::vector<double> J, std::vector<double> Jz){
+void printScreenColumns(int step, std::vector<double> ctpos, std::vector<double> J){
 
     std::cout << "  " << step << "   " 
                       << ctpos[0] << "   " 
                       << ctpos[1] << "   " 
                       << J[0] << "   " 
                       << J[1] << "   " 
-                      << J[2] << "   " 
-                      << Jz[0] << "   " 
-                      << Jz[1] << "   " 
-                      << Jz[2] << "   " 
-                      << J[2]-Jz[2] << std::endl; //" \n";
+                      << J[2] << std::endl; //" \n";
 }
 
 // Print elapsed time at the end of the run
